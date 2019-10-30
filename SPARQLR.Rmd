@@ -1,0 +1,254 @@
+---
+title: "SPARQL with R"
+author: "Katharina Kaelin"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    theme: lumen
+    highlight: tango
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: 0;
+  margin-right: auto;
+}
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    border-left: 5px solid #eee;
+}
+
+h1.title {
+  font-size: 38px;
+  color: #000000;
+  }
+  
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: #0033cc;
+}
+h2 { /* Header 2 */
+    font-size: 28px;
+	color: #0099ff
+}
+h3 { /* Header 3 */
+    font-size: 14px;
+	color: #6600cc
+}
+</style>
+
+https://github.com/statistikZH/R_AS_GIS <br>
+https://query.wikidata.org/ <br>
+rm(list = ls())
+
+# Introduction
+
+**An overview of R libraries to query Wikidata (27.1.2019)** <br>
+https://www.lehir.net/how-to-query-wikidata-in-r/ <br> 
+=> https://www.lehir.net/how-to-query-wikidata-in-r/#summary
+
+
+**> WikidataR** <br>
+https://github.com/Ironholds/WikidataR <br>
+https://cran.r-project.org/web/packages/WikidataR/index.html <br>
+https://cran.r-project.org/web/packages/WikidataR/WikidataR.pdf 
+
+**> WikidataQueryServiceR** <br>
+https://github.com/bearloga/WikidataQueryServiceR <br>
+https://cran.r-project.org/web/packages/WikidataQueryServiceR/index.html <br>
+https://cran.r-project.org/web/packages/WikidataQueryServiceR/WikidataQueryServiceR.pdf 
+
+**> SPARQL** <br>
+https://cran.r-project.org/web/packages/SPARQL/index.html <br>
+https://cran.r-project.org/web/packages/SPARQL/SPARQL.pdf 
+
+# R Setup
+
+```{r setup, echo=T, results='hide', message=FALSE, warning=FALSE}
+
+# Import libraries
+library(WikidataQueryServiceR)
+library(SPARQL)
+library(tidyverse)
+library(sf)
+library(stringr)
+
+# Number formatting
+options(scipen = 1000000)
+options(digits = 6)
+
+```
+
+# Museum in Canton Zürich
+
+https://w.wiki/AwP
+
+```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
+## WikidataQueryServiceR
+start.time <- Sys.time()
+museum1_df <- query_wikidata('SELECT DISTINCT ?item ?name ?coord ?lat ?lon
+WHERE
+{
+hint:Query hint:optimizer "None" .
+?item wdt:P131* wd:Q11943 .
+?item wdt:P31/wdt:P279* wd:Q33506 .
+?item wdt:P625 ?coord .
+?item p:P625 ?coordinate .
+?coordinate psv:P625 ?coordinate_node .
+?coordinate_node wikibase:geoLatitude ?lat .
+?coordinate_node wikibase:geoLongitude ?lon .
+SERVICE wikibase:label {
+bd:serviceParam wikibase:language "ca" .
+?item rdfs:label ?name
+}
+}
+ORDER BY ASC (?name)')
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+## SPARQL 
+start.time <- Sys.time()
+endpoint <- "https://query.wikidata.org/sparql"
+query <- 'SELECT DISTINCT ?item ?name ?coord ?lat ?lon
+WHERE
+{
+hint:Query hint:optimizer "None" .
+?item wdt:P131* wd:Q11943 .
+?item wdt:P31/wdt:P279* wd:Q33506 .
+?item wdt:P625 ?coord .
+?item p:P625 ?coordinate .
+?coordinate psv:P625 ?coordinate_node .
+?coordinate_node wikibase:geoLatitude ?lat .
+?coordinate_node wikibase:geoLongitude ?lon .
+SERVICE wikibase:label {
+bd:serviceParam wikibase:language "ca" .
+?item rdfs:label ?name
+}
+}
+ORDER BY ASC (?name) '
+museum2 <- SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
+museum2_df <- museum2$results
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+```
+
+# Municipalities of Canton Zürich
+
+http://yasgui.org/short/fg7fNak6G
+
+```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
+## SPARQL 
+endpoint <- "https://ld.geo.admin.ch/query"
+query <- 'PREFIX schema: <http://schema.org/>
+PREFIX gn: <http://www.geonames.org/ontology#>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX st: <https://ld.geo.admin.ch/def/>
+select ?Municipality ?Name ?Population ?bfs ?WKT
+where{
+?Municipality gn:featureCode gn:A.ADM3 .
+?Municipality schema:name ?Name .
+?Municipality gn:population?Population .
+?Municipality st:bfsNumber ?bfs .
+?Municipality dct:issued ?Date .
+?Municipality gn:parentADM1 ?InCanton .
+?InCanton schema:name ?CantonName .
+?Municipality geo:hasGeometry ?Geometry .
+?Geometry geo:asWKT ?WKT .
+FILTER (?Date = "2019-01-01"^^xsd:date)
+FILTER (?CantonName = "Zürich")
+}'
+municipality <- SPARQL(endpoint,query)
+municipality_df <- municipality$results
+```
+
+
+# Convert df to spatial df
+
+```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
+## museum
+museum_sf <- sf::st_as_sf(x = museum2_df, coords = c("lon", "lat"), crs= 4326) # epsg:4326 is the ID of wgs84
+
+## municipality
+municipality_df$WKT[1]
+municipality_df$WKT_corrected <-str_match(municipality_df$WKT, '\"(.*?)\"')[,2]
+municipality_df$WKT_corrected[1]
+municipality_sfc = st_as_sfc(municipality_df$WKT_corrected, crs=4326) # epsg:4326 is the ID of wgs84
+municipality_sf = st_sf(municipality_df %>% select(-WKT, -WKT_corrected), geometry =municipality_sfc) 
+
+# Plot result: R base plot
+plot(st_geometry(municipality_sf))
+plot(st_geometry(museum_sf), pch = 19, col="blue", cex = 0.5, add = TRUE)
+plot(st_geometry(municipality_sf), add = TRUE)
+legend(x=2750000,y=1310000,
+       c("Museum","Muncipality"),
+       lty=c(NA,1),
+       pch=c(19,NA),
+       cex=.8, 
+       col=c("blue","black"),
+       bty='n'
+       )
+```
+
+# Calculate density of museums per municipality
+
+```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
+# Spatial Join: instead of joining dataframes via an equal ID we join data- frames based on an equal location. 
+spjoin_sf <- sf::st_join(museum_sf, municipality_sf)
+spjoin_sf
+
+# Density calculation
+
+# > 1. Count points per polygon
+pts_count <- spjoin_sf %>%
+   dplyr::group_by(bfs) %>%
+   dplyr::summarise(count=n())
+municipality_sf <- municipality_sf %>%
+  dplyr::left_join(pts_count %>% st_set_geometry(NULL) , by = c("bfs" ))
+
+# > 2. Calculate area of polygon
+municipality_sf <- municipality_sf %>%
+  dplyr::mutate(mun_area_m2 =as.vector(sf::st_area(.)))
+
+# > 3. Calculate density: count/area
+municipality_sf$density <- municipality_sf$count / municipality_sf$mun_area_m2 * 1000000
+
+# Plot result: tmap
+# > tmap static
+tmap::tmap_mode
+tmap::tm_shape(municipality_sf) +
+  tmap::tm_fill("density",
+          title="Density of public transportation stops",
+          style="quantile", 
+          palette="BuGn", 
+          colorNA = "grey") +
+  tmap::tm_borders() +
+  tmap::tm_layout(frame = FALSE,
+                  legend.position = c("right", "top"),
+                  legend.outside = TRUE)
+# Export Data as shp
+st_write(museum_sf, "./museum.shp", delete_layer = TRUE)
+st_write(municipality_sf, "./municipality.shp", delete_layer = TRUE)
+
+```
+
+# If you want to know more about Linked Data
+https://github.com/openZH/LinkedData_Bookmarks
+
