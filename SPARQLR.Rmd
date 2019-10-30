@@ -249,6 +249,3 @@ st_write(municipality_sf, "./municipality.shp", delete_layer = TRUE)
 
 ```
 
-# If you want to know more about Linked Data
-https://github.com/openZH/LinkedData_Bookmarks
-
