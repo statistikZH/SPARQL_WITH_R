@@ -79,11 +79,12 @@ https://cran.r-project.org/web/packages/SPARQL/SPARQL.pdf
 ```{r setup, echo=T, results='hide', message=FALSE, warning=FALSE}
 
 # Import libraries
-library(WikidataQueryServiceR)
-library(SPARQL)
-library(tidyverse)
-library(sf)
-library(stringr)
+library(WikidataQueryServiceR) ##  This is an R wrapper for the Wikidata Query Service (WDQS) which provides a way for tools toquery Wikidata via  SPARQL. 
+library(SPARQL) ## Load SPARQL SELECT query result tables as a data frame, or UPDATE the triple store by connecting to an end-point over HTTP.
+library(tidyverse) ## # collection of R packages designed for data science
+library(sf) ##  GIS vector library 
+library(stringr) ## The stringr package provide a cohesive set of functions designed to make working with strings as easy as possible
+library(DT) ## Data objects in R can be rendered as HTML tables using the JavaScript library 'DataTables'
 
 # Number formatting
 options(scipen = 1000000)
@@ -98,7 +99,7 @@ https://w.wiki/AwP
 ```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
 ## WikidataQueryServiceR
 start.time <- Sys.time()
-museum1_df <- query_wikidata('SELECT DISTINCT ?item ?name ?coord ?lat ?lon
+museum1_df <- WikidataQueryServiceR::query_wikidata('SELECT DISTINCT ?item ?name ?coord ?lat ?lon
 WHERE
 {
 hint:Query hint:optimizer "None" .
@@ -110,7 +111,7 @@ hint:Query hint:optimizer "None" .
 ?coordinate_node wikibase:geoLatitude ?lat .
 ?coordinate_node wikibase:geoLongitude ?lon .
 SERVICE wikibase:label {
-bd:serviceParam wikibase:language "ca" .
+bd:serviceParam wikibase:language "de" .
 ?item rdfs:label ?name
 }
 }
@@ -118,6 +119,8 @@ ORDER BY ASC (?name)')
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
+datatable(museum1_df)
 
 ## SPARQL 
 start.time <- Sys.time()
@@ -134,16 +137,18 @@ hint:Query hint:optimizer "None" .
 ?coordinate_node wikibase:geoLatitude ?lat .
 ?coordinate_node wikibase:geoLongitude ?lon .
 SERVICE wikibase:label {
-bd:serviceParam wikibase:language "ca" .
+bd:serviceParam wikibase:language "de" .
 ?item rdfs:label ?name
 }
 }
 ORDER BY ASC (?name) '
-museum2 <- SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
+museum2 <- SPARQL::SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
 museum2_df <- museum2$results
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
+datatable(museum2_df)
 ```
 
 # Municipalities of Canton Zürich
@@ -175,8 +180,10 @@ where{
 FILTER (?Date = "2019-01-01"^^xsd:date)
 FILTER (?CantonName = "Zürich")
 }'
-municipality <- SPARQL(endpoint,query)
+municipality <- SPARQL::SPARQL(endpoint,query)
 municipality_df <- municipality$results
+
+datatable(municipality_df)
 ```
 
 
@@ -185,6 +192,7 @@ municipality_df <- municipality$results
 ```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
 ## museum
 museum_sf <- sf::st_as_sf(x = museum2_df, coords = c("lon", "lat"), crs= 4326) # epsg:4326 is the ID of wgs84
+museum_sf
 
 ## municipality
 municipality_df$WKT[1]
@@ -192,6 +200,7 @@ municipality_df$WKT_corrected <-str_match(municipality_df$WKT, '\"(.*?)\"')[,2]
 municipality_df$WKT_corrected[1]
 municipality_sfc = st_as_sfc(municipality_df$WKT_corrected, crs=4326) # epsg:4326 is the ID of wgs84
 municipality_sf = st_sf(municipality_df %>% select(-WKT, -WKT_corrected), geometry =municipality_sfc) 
+municipality_sf
 
 # Plot result: R base plot
 plot(st_geometry(municipality_sf))
@@ -246,6 +255,52 @@ tmap::tm_shape(municipality_sf) +
 # Export Data as shp
 st_write(museum_sf, "./museum.shp", delete_layer = TRUE)
 st_write(municipality_sf, "./municipality.shp", delete_layer = TRUE)
+
+```
+
+# Wikidata query that lists all datasets that use “statistik.zh.ch” as a source
+
+Thank you @[csarasuagar](https://twitter.com/csarasuagar)! **=D**
+
+```{r}
+# municipality
+# https://w.wiki/BA8
+start.time <- Sys.time()
+endpoint <- "https://query.wikidata.org/sparql"
+query <- 'SELECT *
+{
+  ?ch wdt:P31 wd:Q70208 .
+  OPTIONAL {?ch wdt:P17 wd:Q39.}
+  ?ch ?prop ?statement .
+  ?statement prov:wasDerivedFrom ?refnode.
+  ?refnode   pr:P854 ?ref.  #pr:P248 #pr:P854
+  FILTER (CONTAINS(str(?ref),"statistik.zh.ch"))
+}
+order by ?ch
+'
+source_municipality <- SPARQL::SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
+source_municipality_df <-source_municipality$results
+datatable(source_municipality_df )
+
+# city
+# https://w.wiki/BA7
+start.time <- Sys.time()
+endpoint <- "https://query.wikidata.org/sparql"
+query <- 'SELECT *
+WHERE
+{
+  ?ch wdt:P31 wd:Q54935504 .
+  OPTIONAL {?ch wdt:P17 wd:Q39.}
+  ?ch ?prop ?statement .
+  ?statement prov:wasDerivedFrom ?refnode.
+  ?refnode   pr:P854 ?ref.  #pr:P248 #pr:P854
+  FILTER (CONTAINS(str(?ref),"statistik.zh.ch"))
+}
+order by ?ch
+'
+source_city <- SPARQL::SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
+source_city_df <-source_city$results
+datatable(source_city_df )
 
 ```
 
