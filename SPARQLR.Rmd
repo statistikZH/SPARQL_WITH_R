@@ -49,10 +49,6 @@ h3 { /* Header 3 */
 }
 </style>
 
-https://github.com/statistikZH/R_AS_GIS <br>
-https://query.wikidata.org/ <br>
-rm(list = ls())
-
 # Introduction
 
 **An overview of R libraries to query Wikidata (27.1.2019)** <br>
@@ -92,6 +88,10 @@ options(digits = 6)
 
 ```
 
+# What else could we be doing today...?
+
+![Source: https://www.pexels.com/photo/landscape-nature-love-water-68357/ (last accessed: 01.11.2019)](https://images.pexels.com/photos/68357/pexels-photo-68357.jpeg)
+
 # Museum in Canton Zürich
 
 https://w.wiki/AwP
@@ -120,8 +120,7 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-datatable(museum1_df)
-
+DT::datatable(museum1_df)
 ## SPARQL 
 start.time <- Sys.time()
 endpoint <- "https://query.wikidata.org/sparql"
@@ -148,7 +147,7 @@ end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
 
-datatable(museum2_df)
+DT::datatable(museum2_df)
 ```
 
 # Municipalities of Canton Zürich
@@ -183,7 +182,7 @@ FILTER (?CantonName = "Zürich")
 municipality <- SPARQL::SPARQL(endpoint,query)
 municipality_df <- municipality$results
 
-datatable(municipality_df)
+DT::datatable(municipality_df)
 ```
 
 
@@ -191,22 +190,22 @@ datatable(municipality_df)
 
 ```{r, collapse=TRUE, warning=FALSE,  message=FALSE}
 ## museum
-museum_sf <- sf::st_as_sf(x = museum2_df, coords = c("lon", "lat"), crs= 4326) # epsg:4326 is the ID of wgs84
+museum_sf <- sf::st_as_sf(x = museum2_df, coords = c("lon", "lat"), crs= 4326) %>% st_transform(2056) 
 museum_sf
 
 ## municipality
 municipality_df$WKT[1]
 municipality_df$WKT_corrected <-str_match(municipality_df$WKT, '\"(.*?)\"')[,2]
 municipality_df$WKT_corrected[1]
-municipality_sfc = st_as_sfc(municipality_df$WKT_corrected, crs=4326) # epsg:4326 is the ID of wgs84
-municipality_sf = st_sf(municipality_df %>% select(-WKT, -WKT_corrected), geometry =municipality_sfc) 
+municipality_sfc = st_as_sfc(municipality_df$WKT_corrected, crs=4326) 
+municipality_sf = st_sf(municipality_df %>% select(-WKT, -WKT_corrected), geometry =municipality_sfc) %>% st_transform(2056) 
 municipality_sf
 
 # Plot result: R base plot
 plot(st_geometry(municipality_sf))
 plot(st_geometry(museum_sf), pch = 19, col="blue", cex = 0.5, add = TRUE)
 plot(st_geometry(municipality_sf), add = TRUE)
-legend(x=2750000,y=1310000,
+legend(x=2708000,y=1287500,
        c("Museum","Muncipality"),
        lty=c(NA,1),
        pch=c(19,NA),
@@ -280,7 +279,7 @@ order by ?ch
 '
 source_municipality <- SPARQL::SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
 source_municipality_df <-source_municipality$results
-datatable(source_municipality_df )
+DT::datatable(source_municipality_df )
 
 # city
 # https://w.wiki/BA7
@@ -300,7 +299,8 @@ order by ?ch
 '
 source_city <- SPARQL::SPARQL(endpoint,query,curl_args=list(useragent=R.version.string))
 source_city_df <-source_city$results
-datatable(source_city_df )
+DT::datatable(source_city_df )
 
 ```
+
 
