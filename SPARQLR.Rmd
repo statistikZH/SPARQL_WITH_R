@@ -243,10 +243,12 @@ municipality_sf$density <- municipality_sf$count / municipality_sf$mun_area_m2 *
 tmap::tmap_mode
 tmap::tm_shape(municipality_sf) +
   tmap::tm_fill("density",
-          title="Density of public transportation stops",
+          title="Density of museums",
           style="quantile", 
           palette="BuGn", 
-          colorNA = "grey") +
+          colorNA = "grey",
+          textNA = "No Museum"
+          ) +
   tmap::tm_borders() +
   tmap::tm_layout(frame = FALSE,
                   legend.position = c("right", "top"),
