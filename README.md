@@ -3,6 +3,7 @@ SPARQL with R presentation for [Wikidata Zurich Training 2019](https://www.wikid
 The R Markdown document is published as a [GitHub Page](https://statistikzh.github.io/SPARQL_WITH_R/).
 
 # More Resources 
-[Linked Data Bookmarks](https://github.com/openZH/LinkedData_Bookmarks) 
+[Linked Data Bookmarks](https://github.com/openZH/LinkedData_Bookmarks) <br>
+[R as GIS](https://github.com/statistikZH/R_AS_GIS)
 
 
