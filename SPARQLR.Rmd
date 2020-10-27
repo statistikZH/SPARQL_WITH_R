@@ -240,17 +240,20 @@ municipality_sf$density <- municipality_sf$count / municipality_sf$mun_area_m2 *
 
 # Plot result: tmap
 # > tmap static
-tmap::tmap_mode
 tmap::tm_shape(municipality_sf) +
   tmap::tm_fill("density",
-          title="Density of museums",
-          style="quantile", 
-          palette="BuGn", 
-          colorNA = "grey",
-          textNA = "No Museum"
+          title="Number of museums per km2  \n(Classification Method: Quantile)",
+          style="quantile",   
+          n = 4, # preferred number of classes
+          palette="YlGnBu", 
+          colorNA = "grey90",
+          textNA = "No Museum",
+          legend.hist = TRUE,
           ) +
   tmap::tm_borders() +
-  tmap::tm_layout(frame = FALSE,
+  tmap::tm_legend(outside = TRUE, hist.width =3) +
+  tmap::tm_layout(main.title = "Density of museum",
+                  frame = FALSE,
                   legend.position = c("right", "top"),
                   legend.outside = TRUE)
 # Export Data as shp
