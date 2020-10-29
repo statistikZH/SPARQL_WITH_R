@@ -79,6 +79,7 @@ library(WikidataQueryServiceR) ##  This is an R wrapper for the Wikidata Query S
 library(SPARQL) ## Load SPARQL SELECT query result tables as a data frame, or UPDATE the triple store by connecting to an end-point over HTTP.
 library(tidyverse) ## # collection of R packages designed for data science
 library(sf) ##  GIS vector library 
+library(tmap) ## This package offers a flexible, layer-based, and easy to use approach to create thematic maps
 library(stringr) ## The stringr package provide a cohesive set of functions designed to make working with strings as easy as possible
 library(DT) ## Data objects in R can be rendered as HTML tables using the JavaScript library 'DataTables'
 
